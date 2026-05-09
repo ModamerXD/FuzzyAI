@@ -22,3 +22,4 @@ class FuzzerAttackMode(str, Enum):
     BON = "bon"
     ASCIISMUGGLING = "asc"
     SHUFFLE_INCONSISTENCY = "shu"
+    PROMPT_EXTRACTION = "prompt_extraction"

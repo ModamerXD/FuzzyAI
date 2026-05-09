@@ -127,7 +127,7 @@ async def run_fuzzer(args: argparse.Namespace) -> None:
         raise ValueError(f"Error adding extra argument, please make sure you use the correct format, i.e -e key=value. For further help, please check the wiki: {WIKI_LINK}")
 
     if hasattr(args, 'target_prompts_file') and args.target_prompts_file:
-        with open(args.target_prompts_file, 'r') as f:
+        with open(args.target_prompts_file, 'r', encoding='utf-8') as f:
             prompts = f.readlines()
         prompts = [prompt.strip() for prompt in prompts if prompt.strip()]
     else:
@@ -135,7 +135,7 @@ async def run_fuzzer(args: argparse.Namespace) -> None:
 
     if hasattr(args, 'benign_prompts') and args.benign_prompts:
         logger.info(f"Adding {args.benign_prompts} benign prompts to the attack")
-        with open('resources/benign_prompts.txt', 'r') as f:
+        with open('resources/benign_prompts.txt', 'r', encoding='utf-8') as f:
             benign_prompts = f.readlines()[:args.benign_prompts]
 
         prompts += [prompt.strip() for prompt in benign_prompts if prompt.strip()]
@@ -273,7 +273,7 @@ async def run_cli() -> None:
     fuzz_parser.add_argument('-cm', '--classifier_model', help=f'Defines which model to use for classification (default: use the attacked model)', type=str, default=None)
     fuzz_parser.add_argument('-tc', '--truncate-cot', help='Remove CoT (Chain Of Thought) when classifying results (default: true)', action='store_true', default=True)
     fuzz_parser.add_argument('-N', f'--{PARAMETER_MAX_TOKENS}', help='Max tokens to generate when generating LLM response (default: 100)', 
-                        type=int, default=100)
+                        type=int, default=512)
 
     fuzz_parser.add_argument('-b', f'--benign_prompts', help='Adds n benign prompts to the attack (default: 0)', 
                         type=int, default=0)
@@ -282,7 +282,7 @@ async def run_cli() -> None:
     group.add_argument('-t', '--target-prompt', help='Prompt to attack (One or more)', action="append", type=str, default=[])
     group.add_argument('-T', '--target-prompts-file', help='Prompts to attack (from file, line separated)', type=str, default=None)
 
-    fuzz_parser.add_argument('-s', '--system-prompt', help=f'System prompt to use (default: {DEFAULT_SYSTEM_PROMPT}', type=str, default=DEFAULT_SYSTEM_PROMPT)
+    fuzz_parser.add_argument('-s', '--system-prompt', help='System prompt to use (default: None)', type=str, default=None)
     fuzz_parser.add_argument('-e', '--extra', help='Extra parameters (for providers/attack handlers) in form of key=value', action="append", 
                         type=str, default=[])
     fuzz_parser.add_argument('-E', '--list-extra', help='List extra arguments for selected attack method(s)', action='store_true', default=False)

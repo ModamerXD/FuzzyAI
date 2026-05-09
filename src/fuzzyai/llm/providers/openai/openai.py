@@ -22,7 +22,7 @@ class OpenAIProviderException(BaseLLMProviderException):
     pass
 
 class OpenAIConfig:
-    API_BASE_URL = "https://api.openai.com/v1"
+    API_BASE_URL = "https://api.groq.com/openai/v1"
     CHAT_COMPLETIONS_ENDPOINT = "/chat/completions"
     API_KEY_ENV_VAR = EnvironmentVariables.OPENAI_API_KEY.value
     O1_FAMILY_MODELS = {"o1-mini", "o1-preview", "o3-mini"}
@@ -53,7 +53,7 @@ class OpenAIProvider(BaseLLMProvider):
 
     @classmethod
     def get_supported_models(cls) -> Union[list[str], str]:
-        return ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o", "o1-mini", "o1-preview", "o3-mini", "gpt-4.5-preview"]
+        return ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o", "o1-mini", "o1-preview", "o3-mini", "gpt-4.5-preview", "llama-3.1-8b-instant", "gpt-oss-120b", "llama-3.3-70b-versatile" ]
 
     
     @api_endpoint(OpenAIConfig.CHAT_COMPLETIONS_ENDPOINT)
@@ -62,7 +62,7 @@ class OpenAIProvider(BaseLLMProvider):
         messages = self._prepare_messages(messages, system_prompt)
         return await self.chat(messages=messages, **extra) # type: ignore
     
-    @backoff.on_exception(backoff.expo, BaseLLMProviderRateLimitException, max_value=10)
+    @backoff.on_exception(backoff.expo, BaseLLMProviderRateLimitException, max_time=60)
     @api_endpoint(OpenAIConfig.CHAT_COMPLETIONS_ENDPOINT)
     async def chat(self, messages: list[BaseLLMMessage], url: str, system_prompt: Optional[str] = None, **extra: Any) -> BaseLLMProviderResponse:
         messages = self._prepare_messages(messages, system_prompt)
@@ -83,7 +83,7 @@ class OpenAIProvider(BaseLLMProvider):
             logger.error(f'Error generating text: {e}')
             raise OpenAIProviderException('Cant generate text')
     
-    @backoff.on_exception(backoff.expo, BaseLLMProviderRateLimitException, max_value=10)
+    @backoff.on_exception(backoff.expo, BaseLLMProviderRateLimitException, max_time=60)
     def sync_generate(self, prompt: str, **extra: Any) -> Optional[BaseLLMProviderResponse]:
         messages = [BaseLLMMessage(role=LLMRole.USER, content=prompt)]
         
