@@ -5,6 +5,7 @@ class LLMProvider(str, Enum):
     OLLAMA = "ollama"
     AZURE = "azure"
     OPENAI = "openai"
+    GROQ = "groq"
     AWS_BEDROCK = "aws-bedrock"
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"

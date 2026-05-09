@@ -104,285 +104,134 @@ REPORT_TEMPLATE = '''
 <html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <title>Fuzzer Report</title>
+    <title>FuzzyAI Red Team Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }}
-        .container {{
-            max-width: 1200px;
-            margin: 0 auto;
-        }}
-        .card {{
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 20px;
-            margin-bottom: 20px;
-        }}
-        .chart-container {{
-            position: relative;
-            height: 400px;
-            width: 100%;
-        }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }}
-        th, td {{
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-        }}
-        th {{
-            font-weight: 600;
-        }}
-        tr:hover {{
-            background-color: #535965;
-        }}
-        h1, h2 {{
-            margin-top: 0;
-        }}
-        .heatmap-container {{
-            margin: 20px 0;
-            overflow-x: auto;
-        }}
-        .heatmap-cell {{
-            padding: 10px;
-            text-align: center;
-        }}
-        .copy-icon {{
-            cursor: pointer;
-            color: #666;
-            margin-left: 8px;
-            transition: color 0.2s;
-        }}
-        
-        .copy-icon:hover {{
-            color: white;
-        }}
-        
-        .tooltip {{
-            position: absolute;
-            background: #333;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }}
-        
-        td {{
-            position: relative;
-        }}
-        
-        .copy-success {{
-            color: #28a745;
-        }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 20px; background-color: #121212; color: #e0e0e0; }}
+        .container {{ max-width: 1200px; margin: 0 auto; }}
+        .card {{ background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); padding: 20px; margin-bottom: 20px; }}
+        .chart-container {{ position: relative; height: 400px; width: 100%; }}
+        h1, h2 {{ color: #ffffff; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }}
+        table {{ width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9em; }}
+        th, td {{ text-align: left; padding: 12px; border-bottom: 1px solid #333; }}
+        th {{ background-color: #2d2d2d; font-weight: 600; }}
+        tr:hover {{ background-color: #2a2a2a; }}
+        .mitigation-list li {{ margin-bottom: 10px; line-height: 1.5; }}
+        .severity-high {{ color: #ff4444; font-weight: bold; }}
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="card">
-            <h2>Jailbroken Prompts</h2>
-            <table id="harmfulPromptsTable">
-                <thead>
-                    <tr>
-                        <th>Original Prompt</th>
-                        <th>Adversarial Prompt</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-        <div class="card">
-            <h2>Model Success Rate</h2>
-            <div class="chart-container">
-                <canvas id="modelSuccessChart"></canvas>
-            </div>
-        </div>
         
         <div class="card">
-            <h2>Attack Mode Success Rate</h2>
-            <div class="chart-container">
-                <canvas id="attackSuccessChart"></canvas>
-            </div>
-        </div>
-        
-        <div class="card">
-            <h2>Success Rate Heatmap</h2>
-            <div class="heatmap-container" id="heatmapContainer"></div>
+            <h2><i class="fas fa-shield-alt"></i> Recommended Mitigations</h2>
+            <ul id="mitigationsList" class="mitigation-list"></ul>
         </div>
 
         <div class="card">
-            <h2>Failed Prompts</h2>
-            <table id="failedPromptsTable">
-                <thead>
-                    <tr>
-                        <th>Original Prompt</th>
-                        <th>Failed Prompt</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
+            <h2><i class="fas fa-spider"></i> Threat Surface (Radar)</h2>
+            <div class="chart-container" style="height: 500px;">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <h2>Model Vulnerability Rate</h2>
+                    <div class="chart-container"><canvas id="modelSuccessChart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <h2>Attack Vector Success</h2>
+                    <div class="chart-container"><canvas id="attackSuccessChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-biohazard"></i> Extracted Data (Successful Jailbreaks)</h2>
+            <table id="harmfulPromptsTable">
+                <thead><tr><th>Target Model</th><th>Original Intent</th><th>Adversarial Payload</th></tr></thead>
+                <tbody></tbody>
             </table>
         </div>
     </div>
+
     <script>
         const reportData = {report_data};
 
-        new Chart(document.getElementById('modelSuccessChart'), {{
-            type: 'bar',
-            data: {{
-                labels: reportData.modelSuccessRate.map(item => item.name),
-                datasets: [{{
-                    label: 'Success Rate (%)',
-                    data: reportData.modelSuccessRate.map(item => item.value),
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)'
-                }}]
-            }},
-            options: {{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {{
-                    title: {{
-                        display: true,
-                        text: 'Model Success Rate'
-                    }}
-                }},
-                scales: {{
-                    y: {{
-                        beginAtZero: true,
-                        max: 100
-                    }}
+        // 1. Generate Mitigations based on successful attacks
+        const mitigationsList = document.getElementById('mitigationsList');
+        const mitigations = new Set();
+        
+        reportData.attackSuccessRate.forEach(attack => {{
+            if (attack.value > 0) {{
+                if (attack.name === 'prompt_extraction' || attack.name === 'format_forcing') {{
+                    mitigations.add('<span class="severity-high">[HIGH] Prompt Extraction:</span> The model is leaking internal constraints via format manipulation. <b>Mitigation:</b> Enforce strict output schema validation before rendering responses to the user. Strip unexpected JSON/YAML tags.');
+                }}
+                if (attack.name === 'gpt_fuzzer' || attack.name === 'dan' || attack.name === 'crescendo') {{
+                    mitigations.add('<span class="severity-high">[HIGH] Generative Roleplay:</span> The model is bypassing rules through complex persona adoption. <b>Mitigation:</b> Deploy an LLM-based Input Classifier (like an intent guardrail) to block adversarial framing before it reaches the core system prompt.');
+                }}
+                if (attack.name === 'base64' || attack.name === 'ascii_smuggling') {{
+                    mitigations.add('<span class="severity-high">[MED] Obfuscation Bypass:</span> The model is executing encoded payloads. <b>Mitigation:</b> Implement a pre-processing middleware to decode and scan Base64/Hex strings against blocklists.');
                 }}
             }}
+        }});
+
+        if (mitigations.size === 0) {{
+            mitigations.add('<span style="color: #00C851;">[SAFE] Zero-Day Defenses Active:</span> No major vulnerabilities detected during this fuzzing run. Current system prompts are highly resilient.');
+        }}
+
+        mitigations.forEach(text => {{
+            const li = document.createElement('li');
+            li.innerHTML = text;
+            mitigationsList.appendChild(li);
+        }});
+
+        // 2. Radar Chart (Threat Surface)
+        const radarColors = ['rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)', 'rgba(75, 192, 192, 0.5)'];
+        const radarBorders = ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)', 'rgba(75, 192, 192, 1)'];
+        
+        const radarDatasets = reportData.heatmap.models.map((model, index) => ({{
+            label: model,
+            data: reportData.heatmap.attacks.map((attack, i) => reportData.heatmap.data[i][index] * 100),
+            backgroundColor: radarColors[index % radarColors.length],
+            borderColor: radarBorders[index % radarBorders.length],
+            pointBackgroundColor: radarBorders[index % radarBorders.length],
+            fill: true
+        }}));
+
+        new Chart(document.getElementById('radarChart'), {{
+            type: 'radar',
+            data: {{ labels: reportData.heatmap.attacks, datasets: radarDatasets }},
+            options: {{ responsive: true, maintainAspectRatio: false, scales: {{ r: {{ angleLines: {{ color: '#444' }}, grid: {{ color: '#444' }}, pointLabels: {{ color: '#fff', font: {{ size: 14 }} }}, ticks: {{ backdropColor: 'transparent', color: '#888', min: 0, max: 100 }} }} }}, plugins: {{ legend: {{ labels: {{ color: '#fff' }} }} }} }}
+        }});
+
+        // 3. Bar Charts
+        const commonOptions = {{ responsive: true, maintainAspectRatio: false, scales: {{ y: {{ beginAtZero: true, max: 100, grid: {{ color: '#333' }}, ticks: {{ color: '#888' }} }}, x: {{ grid: {{ color: '#333' }}, ticks: {{ color: '#888' }} }} }}, plugins: {{ legend: {{ display: false }} }} }};
+
+        new Chart(document.getElementById('modelSuccessChart'), {{
+            type: 'bar',
+            data: {{ labels: reportData.modelSuccessRate.map(i => i.name), datasets: [{{ data: reportData.modelSuccessRate.map(i => i.value), backgroundColor: 'rgba(255, 99, 132, 0.8)' }}] }},
+            options: commonOptions
         }});
 
         new Chart(document.getElementById('attackSuccessChart'), {{
             type: 'bar',
-            data: {{
-                labels: reportData.attackSuccessRate.map(item => item.name),
-                datasets: [{{
-                    label: 'Success Rate (%)',
-                    data: reportData.attackSuccessRate.map(item => item.value),
-                    backgroundColor: 'rgba(75, 192, 192, 0.8)'
-                }}]
-            }},
-            options: {{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {{
-                    title: {{
-                        display: true,
-                        text: 'Attack Mode Success Rate'
-                    }}
-                }},
-                scales: {{
-                    y: {{
-                        beginAtZero: true,
-                        max: 100
-                    }}
-                }}
-            }}
+            data: {{ labels: reportData.attackSuccessRate.map(i => i.name), datasets: [{{ data: reportData.attackSuccessRate.map(i => i.value), backgroundColor: 'rgba(54, 162, 235, 0.8)' }}] }},
+            options: commonOptions
         }});
 
-        const heatmapContainer = document.getElementById('heatmapContainer');
-        const table = document.createElement('table');
-        table.style.width = '100%';
-        
-        const headerRow = document.createElement('tr');
-        headerRow.innerHTML = '<th></th>' + reportData.heatmap.models.map(model => 
-            `<th>${{model}}</th>`
-        ).join('');
-        table.appendChild(headerRow);
-        
-        reportData.heatmap.attacks.forEach((attack, i) => {{
-            const row = document.createElement('tr');
-            row.innerHTML = `<td>${{attack}}</td>` + 
-                reportData.heatmap.data[i].map(value => {{
-                    const intensity = Math.floor(value * 255);
-                    const bgcolor = `rgb(${{255-intensity}}, ${{255-intensity}}, 255)`;
-                    return `<td class="heatmap-cell" style="background-color: ${{bgcolor}}">${{(value * 100).toFixed(1)}}%</td>`;
-                }}).join('');
-            table.appendChild(row);
-        }});
-
-        heatmapContainer.appendChild(table);
-
-        // Function to create copy icon
-        function createCopyIcon(text) {{
-            const icon = document.createElement('i');
-            icon.className = 'fas fa-copy copy-icon';
-            icon.setAttribute('title', 'Copy to clipboard');
-            
-            icon.addEventListener('click', async () => {{
-                try {{
-                    await navigator.clipboard.writeText(text);
-                    icon.classList.add('copy-success');
-                    icon.classList.remove('fa-copy');
-                    icon.classList.add('fa-check');
-                    
-                    setTimeout(() => {{
-                        icon.classList.remove('copy-success');
-                        icon.classList.remove('fa-check');
-                        icon.classList.add('fa-copy');
-                    }}, 1500);
-                }} catch (err) {{
-                    console.error('Failed to copy:', err);
-                }}
-            }});
-            
-            return icon;
-        }}
-
-        // Populate Harmful Prompts Table with copy icons
+        // 4. Data Table
         const harmfulPromptsBody = document.querySelector('#harmfulPromptsTable tbody');
         reportData.harmfulPrompts.forEach(prompt => {{
             const row = document.createElement('tr');
-            
-            // Original prompt cell
-            const originalCell = document.createElement('td');
-            originalCell.textContent = prompt.original;
-            originalCell.appendChild(createCopyIcon(prompt.original));
-            
-            // Harmful prompt cell
-            const harmfulCell = document.createElement('td');
-            harmfulCell.textContent = prompt.harmful;
-            harmfulCell.appendChild(createCopyIcon(prompt.harmful));
-            
-            row.appendChild(originalCell);
-            row.appendChild(harmfulCell);
+            row.innerHTML = `<td><span class="badge bg-danger">VULNERABLE</span></td><td>${{prompt.original}}</td><td><code>${{prompt.harmful.substring(0, 150)}}...</code></td>`;
             harmfulPromptsBody.appendChild(row);
-        }});
-
-        // Populate Failed Prompts Table with copy icons
-        const failedPromptsBody = document.querySelector('#failedPromptsTable tbody');
-        reportData.failedPrompts.forEach(prompt => {{
-            const row = document.createElement('tr');
-            
-            // Original prompt cell
-            const originalCell = document.createElement('td');
-            originalCell.textContent = prompt.original;
-            originalCell.appendChild(createCopyIcon(prompt.original));
-            
-            // Failed prompt cell
-            const failedCell = document.createElement('td');
-            failedCell.textContent = prompt.harmful || '-';
-            if (prompt.harmful) {{
-                failedCell.appendChild(createCopyIcon(prompt.harmful));
-            }}
-            
-            row.appendChild(originalCell);
-            row.appendChild(failedCell);
-            failedPromptsBody.appendChild(row);
         }});
     </script>
 </body>

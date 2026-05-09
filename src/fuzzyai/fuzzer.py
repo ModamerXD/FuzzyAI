@@ -9,6 +9,9 @@ from uuid import uuid4
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 
+import aiofiles
+import aiofiles.os
+
 from fuzzyai.consts import DATETIME_FORMAT
 from fuzzyai.handlers.attacks.base import BaseAttackTechniqueHandler, attack_handler_fm
 from fuzzyai.handlers.attacks.enums import FuzzerAttackMode
@@ -190,18 +193,18 @@ class Fuzzer:
                     attack_modes: list[FuzzerAttackMode], **extra: Any) -> tuple[FuzzerResult, list[AttackSummary]]:
         """
         Fuzz the given prompts.
-
-        Args:
-            prompts (list[AdversarialPromptDTO]): The prompts to fuzz.
-            models (list[str]): The models to attack.
-            attack_mode (FuzzerAttackMode): The attack mode.
         """
         raw_results: list[AttackSummary] = []
         attack_handler: Optional[BaseAttackTechniqueHandlerProto] = None
         
         logger.info('Starting fuzzer...')
-        
         start_time = time.time()
+
+        # Create the output directory early for progressive saving using local datetime
+        current_time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        output_dir = f"results/{current_time_str}"
+        await aiofiles.os.makedirs(output_dir, exist_ok=True)
+        raw_file_path = f"{output_dir}/raw.jsonl"
 
         # Verify that all models has been added by add_llm
         for model in models:
@@ -221,6 +224,15 @@ class Fuzzer:
                     attack_result.system_prompt = extra.get('system_prompt', 'No system prompt set')
                     logger.info(f'Finished attacking {len(prompts)} prompts for attack mode {attack_mode}')
                     raw_results.append(attack_result)
+                    
+                    # --- PROGRESSIVE SAVE START ---
+                    try:
+                        async with aiofiles.open(raw_file_path, 'a', encoding="utf-8") as f:
+                            await f.write(attack_result.model_dump_json() + "\n")
+                        logger.info(f"Progressively saved results to {raw_file_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to progressively save: {e}")
+                    # --- PROGRESSIVE SAVE END ---
                 else:
                     logger.error(f'Failed to attack {len(prompts)} prompts for attack mode {attack_mode}')
         

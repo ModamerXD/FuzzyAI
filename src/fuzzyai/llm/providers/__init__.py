@@ -4,6 +4,7 @@ from .azure.azure import AzureProvider
 from .bedrock.handler import AwsBedrockProvider
 from .deepseek.handler import DeepSeekProvider
 from .gemini.handler import GeminiProvider
+from .groq.handler import GroqProvider
 from .local.llama2_llm import Llama2Provider
 from .local.local_llm import LocalProvider
 from .ollama.ollama import OllamaProvider
