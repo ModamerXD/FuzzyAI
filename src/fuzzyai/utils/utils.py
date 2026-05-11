@@ -168,16 +168,16 @@ REPORT_TEMPLATE = '''
         const mitigationsList = document.getElementById('mitigationsList');
         const mitigations = new Set();
         
+        const mitigationsDict = reportData.mitigationsDict;
+
         reportData.attackSuccessRate.forEach(attack => {{
             if (attack.value > 0) {{
-                if (attack.name === 'prompt_extraction' || attack.name === 'format_forcing') {{
-                    mitigations.add('<span class="severity-high">[HIGH] Prompt Extraction:</span> The model is leaking internal constraints via format manipulation. <b>Mitigation:</b> Enforce strict output schema validation before rendering responses to the user. Strip unexpected JSON/YAML tags.');
-                }}
-                if (attack.name === 'gpt_fuzzer' || attack.name === 'dan' || attack.name === 'crescendo') {{
-                    mitigations.add('<span class="severity-high">[HIGH] Generative Roleplay:</span> The model is bypassing rules through complex persona adoption. <b>Mitigation:</b> Deploy an LLM-based Input Classifier (like an intent guardrail) to block adversarial framing before it reaches the core system prompt.');
-                }}
-                if (attack.name === 'base64' || attack.name === 'ascii_smuggling') {{
-                    mitigations.add('<span class="severity-high">[MED] Obfuscation Bypass:</span> The model is executing encoded payloads. <b>Mitigation:</b> Implement a pre-processing middleware to decode and scan Base64/Hex strings against blocklists.');
+                // Check if we have a specific mitigation for this attack
+                if (mitigationsDict[attack.name]) {{
+                    mitigations.add(mitigationsDict[attack.name]);
+                }} else {{
+                    // Fallback mitigation using standard string addition to avoid Python format errors
+                    mitigations.add('<span class="severity-high">[ATTENTION] ' + attack.name + ':</span> Vulnerability detected. <b>Mitigation:</b> Apply general LLM security best practices and review logs.');
                 }}
             }}
         }});
@@ -316,6 +316,15 @@ def generate_report(report: FuzzerResult) -> None:
                 "value": round(success_rate, 2)
             })
 
+        # Define dynamic mitigations mapped to attack modes
+        dynamic_mitigations = {
+            "prompt_extraction": "<span class='severity-high'>[HIGH] Prompt Extraction:</span> The model is leaking internal constraints. <b>Mitigation:</b> Implement strict input validation and utilize a robust system prompt with explicit refusal instructions for meta-queries.",
+            "format_forcing": "<span class='severity-high'>[HIGH] Format Forcing:</span> The model is leaking data via format manipulation. <b>Mitigation:</b> Enforce strict output schema validation before rendering responses to the user. Strip unexpected JSON/YAML tags.",
+            "gpt_fuzzer": "<span class='severity-high'>[HIGH] Generative Roleplay:</span> The model is bypassing rules through complex persona adoption. <b>Mitigation:</b> Deploy an LLM-based Input Classifier to block adversarial framing.",
+            "dan": "<span class='severity-high'>[HIGH] DAN Jailbreak:</span> The model is breaking character constraints. <b>Mitigation:</b> Reinforce core directives and use a secondary evaluator to monitor for persona drift.",
+            "base64": "<span class='severity-high'>[MED] Obfuscation Bypass:</span> The model is executing encoded payloads. <b>Mitigation:</b> Implement a pre-processing middleware to decode and scan Base64 strings against blocklists."
+        }
+
         # Prepare the report data
         report_data = {
             "modelSuccessRate": model_success_rate,
@@ -326,7 +335,8 @@ def generate_report(report: FuzzerResult) -> None:
                 "data": heatmap_data,
                 "models": models,
                 "attacks": attacks
-            }
+            },
+            "mitigationsDict": dynamic_mitigations 
         }
 
         # Generate the HTML report using string formatting
