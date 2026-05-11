@@ -343,8 +343,8 @@ REPORT_TEMPLATE = '''
             <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--t);letter-spacing:3px;margin-top:4px">RED TEAM SECURITY REPORT</div>
         </div>
         <div class="header-meta">
-            <strong>UNIVERSITY OF BAHRAIN</strong><br>
-            Cybersecurity Research — Class of 2026<br>
+            <strong>OPEN SOURCE</strong><br>
+            AI Security Research<br>
             Generated: <span id="gen-time"></span>
         </div>
     </div>
@@ -401,7 +401,7 @@ REPORT_TEMPLATE = '''
 
     <!-- FOOTER -->
     <div class="report-footer">
-        <strong>FUZZYAI</strong> &nbsp;·&nbsp; University of Bahrain &nbsp;·&nbsp; Open-Source Data Exfiltration Framework
+        <strong>FUZZYAI</strong> &nbsp;·&nbsp; Open-Source AI Security Framework
     </div>
 
     <script>
