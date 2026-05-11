@@ -101,138 +101,423 @@ def print_report(report: FuzzerResult) -> None:
 # Define the template with double curly braces for JavaScript/CSS and single for Python
 REPORT_TEMPLATE = '''
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FuzzyAI Red Team Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FuzzyAI — Red Team Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Syne:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 20px; background-color: #121212; color: #e0e0e0; }}
-        .container {{ max-width: 1200px; margin: 0 auto; }}
-        .card {{ background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); padding: 20px; margin-bottom: 20px; }}
-        .chart-container {{ position: relative; height: 400px; width: 100%; }}
-        h1, h2 {{ color: #ffffff; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }}
-        table {{ width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9em; }}
-        th, td {{ text-align: left; padding: 12px; border-bottom: 1px solid #333; }}
-        th {{ background-color: #2d2d2d; font-weight: 600; }}
-        tr:hover {{ background-color: #2a2a2a; }}
-        .mitigation-list li {{ margin-bottom: 10px; line-height: 1.5; }}
-        .severity-high {{ color: #ff4444; font-weight: bold; }}
+        :root {{
+            --bg:    #010409;
+            --bg2:   #070c17;
+            --bg3:   #0a1020;
+            --green: #00ff88;
+            --blue:  #00d4ff;
+            --red:   #ff2255;
+            --gold:  #ffd700;
+            --t:     #5a6880;
+            --tl:    #c0cdd9;
+            --glass: rgba(7,12,23,0.85);
+            --gb:    rgba(0,255,136,0.12);
+            --gbb:   rgba(0,212,255,0.18);
+        }}
+
+        *, *::before, *::after {{ margin:0; padding:0; box-sizing:border-box; }}
+        html {{ scroll-behavior:smooth; }}
+
+        body {{
+            font-family: 'Syne', sans-serif;
+            background: var(--bg);
+            color: var(--tl);
+            padding: 0;
+            min-height: 100vh;
+        }}
+
+        /* Scanlines */
+        body::before {{
+            content: '';
+            position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
+        }}
+
+        /* ── HEADER ── */
+        .report-header {{
+            background: var(--bg2);
+            border-bottom: 1px solid var(--gb);
+            padding: 2.5rem 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }}
+        .header-brand {{
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 1.8rem;
+            letter-spacing: 5px;
+            color: #fff;
+        }}
+        .header-brand span {{ color: var(--green); }}
+        .header-meta {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--t);
+            letter-spacing: 2px;
+            line-height: 2;
+            text-align: right;
+        }}
+        .header-meta strong {{ color: var(--blue); }}
+
+        /* ── LAYOUT ── */
+        .report-body {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2.5rem 2rem;
+        }}
+
+        /* ── SECTION LABEL ── */
+        .s-label {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--blue);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 0.6rem;
+        }}
+        .s-title {{
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .s-title i {{ color: var(--green); font-size: 0.9rem; }}
+
+        /* ── CARD ── */
+        .card {{
+            background: var(--glass);
+            border: 1px solid var(--gb);
+            border-radius: 4px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(12px);
+            position: relative;
+        }}
+        .card::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 3px; height: 100%;
+            background: linear-gradient(to bottom, var(--blue), var(--green));
+            border-radius: 4px 0 0 4px;
+        }}
+
+        /* Corner brackets */
+        .card::after {{
+            content: '';
+            position: absolute;
+            top: -1px; right: -1px;
+            width: 16px; height: 16px;
+            border-top: 2px solid var(--green);
+            border-right: 2px solid var(--green);
+        }}
+
+        .two-col {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }}
+        @media(max-width: 750px) {{ .two-col {{ grid-template-columns: 1fr; }} }}
+
+        /* ── CHART ── */
+        .chart-wrap {{
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }}
+        .chart-wrap.tall {{ height: 420px; }}
+
+        /* ── MITIGATIONS ── */
+        .mit-list {{
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }}
+        .mit-list li {{
+            font-size: 0.88rem;
+            line-height: 1.8;
+            color: var(--tl);
+            padding: 0.9rem 1.1rem;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 4px;
+            border-left: 3px solid var(--red);
+        }}
+        .mit-list li.safe {{ border-left-color: var(--green); }}
+        .severity-high {{
+            color: var(--red);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }}
+
+        /* ── TABLE ── */
+        .data-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.84rem;
+        }}
+        .data-table thead tr {{
+            background: rgba(0,212,255,0.06);
+            border-bottom: 1px solid rgba(0,212,255,0.2);
+        }}
+        .data-table th {{
+            font-family: 'Orbitron', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            color: var(--blue);
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 700;
+            text-transform: uppercase;
+        }}
+        .data-table td {{
+            padding: 11px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: var(--tl);
+            vertical-align: top;
+        }}
+        .data-table tr:hover td {{ background: rgba(0,255,136,0.03); }}
+        .data-table code {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--gold);
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+            display: block;
+            margin-top: 4px;
+            line-height: 1.6;
+        }}
+        .badge-vuln {{
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.58rem;
+            letter-spacing: 1px;
+            padding: 4px 8px;
+            background: rgba(255,34,85,0.15);
+            border: 1px solid rgba(255,34,85,0.4);
+            color: var(--red);
+            border-radius: 3px;
+            white-space: nowrap;
+        }}
+
+        /* ── FOOTER ── */
+        .report-footer {{
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.04);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--t);
+            letter-spacing: 2px;
+        }}
+        .report-footer strong {{ color: var(--green); }}
     </style>
 </head>
 <body>
-    <div class="container">
-        
+
+    <!-- HEADER -->
+    <div class="report-header">
+        <div>
+            <div class="header-brand"><span>◈</span> FUZZYAI</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--t);letter-spacing:3px;margin-top:4px">RED TEAM SECURITY REPORT</div>
+        </div>
+        <div class="header-meta">
+            <strong>UNIVERSITY OF BAHRAIN</strong><br>
+            Cybersecurity Research — Class of 2026<br>
+            Generated: <span id="gen-time"></span>
+        </div>
+    </div>
+
+    <div class="report-body">
+
+        <!-- MITIGATIONS -->
         <div class="card">
-            <h2><i class="fas fa-shield-alt"></i> Recommended Mitigations</h2>
-            <ul id="mitigationsList" class="mitigation-list"></ul>
+            <span class="s-label">// 01 — Recommendations</span>
+            <div class="s-title"><i class="fas fa-shield-alt"></i>Recommended Mitigations</div>
+            <ul id="mitigationsList" class="mit-list"></ul>
         </div>
 
+        <!-- RADAR -->
         <div class="card">
-            <h2><i class="fas fa-spider"></i> Threat Surface (Radar)</h2>
-            <div class="chart-container" style="height: 500px;">
+            <span class="s-label">// 02 — Threat Surface</span>
+            <div class="s-title"><i class="fas fa-spider"></i>Attack Surface Radar</div>
+            <div class="chart-wrap tall">
                 <canvas id="radarChart"></canvas>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <h2>Model Vulnerability Rate</h2>
-                    <div class="chart-container"><canvas id="modelSuccessChart"></canvas></div>
-                </div>
+        <!-- BAR CHARTS -->
+        <div class="two-col">
+            <div class="card">
+                <span class="s-label">// 03 — Model Exposure</span>
+                <div class="s-title"><i class="fas fa-robot"></i>Model Vulnerability Rate</div>
+                <div class="chart-wrap"><canvas id="modelSuccessChart"></canvas></div>
             </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <h2>Attack Vector Success</h2>
-                    <div class="chart-container"><canvas id="attackSuccessChart"></canvas></div>
-                </div>
+            <div class="card">
+                <span class="s-label">// 04 — Attack Vectors</span>
+                <div class="s-title"><i class="fas fa-crosshairs"></i>Attack Vector Success</div>
+                <div class="chart-wrap"><canvas id="attackSuccessChart"></canvas></div>
             </div>
         </div>
 
+        <!-- TABLE -->
         <div class="card">
-            <h2><i class="fas fa-biohazard"></i> Extracted Data (Successful Jailbreaks)</h2>
-            <table id="harmfulPromptsTable">
-                <thead><tr><th>Target Model</th><th>Original Intent</th><th>Adversarial Payload</th></tr></thead>
+            <span class="s-label">// 05 — Exfiltration Log</span>
+            <div class="s-title"><i class="fas fa-biohazard"></i>Extracted Data — Successful Jailbreaks</div>
+            <table class="data-table" id="harmfulPromptsTable">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Original Intent</th>
+                        <th>Adversarial Payload</th>
+                    </tr>
+                </thead>
                 <tbody></tbody>
             </table>
         </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="report-footer">
+        <strong>FUZZYAI</strong> &nbsp;·&nbsp; University of Bahrain &nbsp;·&nbsp; Open-Source Data Exfiltration Framework
     </div>
 
     <script>
+        // Timestamp
+        document.getElementById('gen-time').textContent = new Date().toUTCString();
+
         const reportData = {report_data};
 
-        // 1. Generate Mitigations based on successful attacks
+        // ── 1. MITIGATIONS ──
         const mitigationsList = document.getElementById('mitigationsList');
         const mitigations = new Set();
-        
         const mitigationsDict = reportData.mitigationsDict;
 
         reportData.attackSuccessRate.forEach(attack => {{
             if (attack.value > 0) {{
-                // Check if we have a specific mitigation for this attack
                 if (mitigationsDict[attack.name]) {{
                     mitigations.add(mitigationsDict[attack.name]);
                 }} else {{
-                    // Fallback mitigation using standard string addition to avoid Python format errors
                     mitigations.add('<span class="severity-high">[ATTENTION] ' + attack.name + ':</span> Vulnerability detected. <b>Mitigation:</b> Apply general LLM security best practices and review logs.');
                 }}
             }}
         }});
 
         if (mitigations.size === 0) {{
-            mitigations.add('<span style="color: #00C851;">[SAFE] Zero-Day Defenses Active:</span> No major vulnerabilities detected during this fuzzing run. Current system prompts are highly resilient.');
+            const li = document.createElement('li');
+            li.classList.add('safe');
+            li.innerHTML = '<span style="color:var(--green);font-family:JetBrains Mono,monospace;font-size:.8rem">[SAFE] ZERO VULNERABILITIES DETECTED</span><br>No major vulnerabilities detected during this fuzzing run. Current system prompts are highly resilient.';
+            mitigationsList.appendChild(li);
+        }} else {{
+            mitigations.forEach(text => {{
+                const li = document.createElement('li');
+                li.innerHTML = text;
+                mitigationsList.appendChild(li);
+            }});
         }}
 
-        mitigations.forEach(text => {{
-            const li = document.createElement('li');
-            li.innerHTML = text;
-            mitigationsList.appendChild(li);
-        }});
+        // ── CHART DEFAULTS ──
+        Chart.defaults.color = '#5a6880';
+        Chart.defaults.font.family = "'JetBrains Mono', monospace";
+        Chart.defaults.font.size = 11;
 
-        // 2. Radar Chart (Threat Surface)
-        const radarColors = ['rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)', 'rgba(75, 192, 192, 0.5)'];
-        const radarBorders = ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)', 'rgba(75, 192, 192, 1)'];
-        
+        const gridColor = 'rgba(255,255,255,0.06)';
+
+        // ── 2. RADAR ──
+        const radarColors   = ['rgba(255,34,85,0.25)','rgba(0,212,255,0.25)','rgba(255,215,0,0.25)','rgba(0,255,136,0.25)'];
+        const radarBorders  = ['rgba(255,34,85,0.9)','rgba(0,212,255,0.9)','rgba(255,215,0,0.9)','rgba(0,255,136,0.9)'];
+
         const radarDatasets = reportData.heatmap.models.map((model, index) => ({{
             label: model,
-            data: reportData.heatmap.attacks.map((attack, i) => reportData.heatmap.data[i][index] * 100),
+            data: reportData.heatmap.attacks.map((_, i) => reportData.heatmap.data[i][index] * 100),
             backgroundColor: radarColors[index % radarColors.length],
-            borderColor: radarBorders[index % radarBorders.length],
+            borderColor:     radarBorders[index % radarBorders.length],
             pointBackgroundColor: radarBorders[index % radarBorders.length],
+            pointRadius: 4,
             fill: true
         }}));
 
         new Chart(document.getElementById('radarChart'), {{
             type: 'radar',
             data: {{ labels: reportData.heatmap.attacks, datasets: radarDatasets }},
-            options: {{ responsive: true, maintainAspectRatio: false, scales: {{ r: {{ angleLines: {{ color: '#444' }}, grid: {{ color: '#444' }}, pointLabels: {{ color: '#fff', font: {{ size: 14 }} }}, ticks: {{ backdropColor: 'transparent', color: '#888', min: 0, max: 100 }} }} }}, plugins: {{ legend: {{ labels: {{ color: '#fff' }} }} }} }}
+            options: {{
+                responsive: true, maintainAspectRatio: false,
+                scales: {{ r: {{
+                    angleLines: {{ color: gridColor }},
+                    grid:       {{ color: gridColor }},
+                    pointLabels: {{ color: '#c0cdd9', font: {{ size: 12, family: "'Orbitron', sans-serif" }} }},
+                    ticks: {{ backdropColor: 'transparent', color: '#5a6880', min: 0, max: 100 }}
+                }} }},
+                plugins: {{ legend: {{ labels: {{ color: '#c0cdd9', padding: 20 }} }} }}
+            }}
         }});
 
-        // 3. Bar Charts
-        const commonOptions = {{ responsive: true, maintainAspectRatio: false, scales: {{ y: {{ beginAtZero: true, max: 100, grid: {{ color: '#333' }}, ticks: {{ color: '#888' }} }}, x: {{ grid: {{ color: '#333' }}, ticks: {{ color: '#888' }} }} }}, plugins: {{ legend: {{ display: false }} }} }};
+        // ── 3. BAR CHARTS ──
+        const barOpts = {{
+            responsive: true, maintainAspectRatio: false,
+            scales: {{
+                y: {{ beginAtZero: true, max: 100, grid: {{ color: gridColor }}, ticks: {{ color: '#5a6880' }} }},
+                x: {{ grid: {{ color: 'transparent' }}, ticks: {{ color: '#5a6880' }} }}
+            }},
+            plugins: {{ legend: {{ display: false }} }}
+        }};
 
         new Chart(document.getElementById('modelSuccessChart'), {{
             type: 'bar',
-            data: {{ labels: reportData.modelSuccessRate.map(i => i.name), datasets: [{{ data: reportData.modelSuccessRate.map(i => i.value), backgroundColor: 'rgba(255, 99, 132, 0.8)' }}] }},
-            options: commonOptions
+            data: {{
+                labels: reportData.modelSuccessRate.map(i => i.name),
+                datasets: [{{ data: reportData.modelSuccessRate.map(i => i.value), backgroundColor: 'rgba(255,34,85,0.7)', borderColor: 'rgba(255,34,85,1)', borderWidth: 1, borderRadius: 3 }}]
+            }},
+            options: barOpts
         }});
 
         new Chart(document.getElementById('attackSuccessChart'), {{
             type: 'bar',
-            data: {{ labels: reportData.attackSuccessRate.map(i => i.name), datasets: [{{ data: reportData.attackSuccessRate.map(i => i.value), backgroundColor: 'rgba(54, 162, 235, 0.8)' }}] }},
-            options: commonOptions
+            data: {{
+                labels: reportData.attackSuccessRate.map(i => i.name),
+                datasets: [{{ data: reportData.attackSuccessRate.map(i => i.value), backgroundColor: 'rgba(0,212,255,0.6)', borderColor: 'rgba(0,212,255,1)', borderWidth: 1, borderRadius: 3 }}]
+            }},
+            options: barOpts
         }});
 
-        // 4. Data Table
-        const harmfulPromptsBody = document.querySelector('#harmfulPromptsTable tbody');
+        // ── 4. TABLE ──
+        const tbody = document.querySelector('#harmfulPromptsTable tbody');
         reportData.harmfulPrompts.forEach(prompt => {{
             const row = document.createElement('tr');
-            row.innerHTML = `<td><span class="badge bg-danger">VULNERABLE</span></td><td>${{prompt.original}}</td><td><code>${{prompt.harmful.substring(0, 150)}}...</code></td>`;
-            harmfulPromptsBody.appendChild(row);
+            row.innerHTML =
+                `<td><span class="badge-vuln">BREACH</span></td>` +
+                `<td>${{prompt.original}}</td>` +
+                `<td><code>${{prompt.harmful.substring(0, 150)}}...</code></td>`;
+            tbody.appendChild(row);
         }});
+
+        if (reportData.harmfulPrompts.length === 0) {{
+            const row = document.createElement('tr');
+            row.innerHTML = `<td colspan="3" style="text-align:center;color:var(--t);padding:2rem;font-family:'JetBrains Mono',monospace;font-size:.8rem">[ NO SUCCESSFUL JAILBREAKS IN THIS SESSION ]</td>`;
+            tbody.appendChild(row);
+        }}
     </script>
 </body>
 </html>
