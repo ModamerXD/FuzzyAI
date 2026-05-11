@@ -629,7 +629,7 @@ def generate_report(report: FuzzerResult) -> None:
         
         # Save the report
         output_path = f'results/{CURRENT_TIMESTAMP}/report.html'
-        with open(output_path, 'w') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_data)
             
         logger.info(f"Report generated at {output_path}")
