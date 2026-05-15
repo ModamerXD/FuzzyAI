@@ -231,20 +231,12 @@ REPORT_TEMPLATE = '''
             border-right: 2px solid var(--green);
         }}
 
-        .two-col {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }}
-        @media(max-width: 750px) {{ .two-col {{ grid-template-columns: 1fr; }} }}
-
         /* ── CHART ── */
         .chart-wrap {{
             position: relative;
             height: 320px;
             width: 100%;
         }}
-        .chart-wrap.tall {{ height: 420px; }}
 
         /* ── MITIGATIONS ── */
         .mit-list {{
@@ -336,7 +328,6 @@ REPORT_TEMPLATE = '''
 </head>
 <body>
 
-    <!-- HEADER -->
     <div class="report-header">
         <div>
             <div class="header-brand"><span>◈</span> FUZZYAI</div>
@@ -351,39 +342,20 @@ REPORT_TEMPLATE = '''
 
     <div class="report-body">
 
-        <!-- MITIGATIONS -->
         <div class="card">
             <span class="s-label">// 01 — Recommendations</span>
             <div class="s-title"><i class="fas fa-shield-alt"></i>Recommended Mitigations</div>
             <ul id="mitigationsList" class="mit-list"></ul>
         </div>
 
-        <!-- RADAR -->
         <div class="card">
-            <span class="s-label">// 02 — Threat Surface</span>
-            <div class="s-title"><i class="fas fa-spider"></i>Attack Surface Radar</div>
-            <div class="chart-wrap tall">
-                <canvas id="radarChart"></canvas>
-            </div>
+            <span class="s-label">// 02 — Model Exposure</span>
+            <div class="s-title"><i class="fas fa-robot"></i>Model Vulnerability Rate</div>
+            <div class="chart-wrap"><canvas id="modelSuccessChart"></canvas></div>
         </div>
 
-        <!-- BAR CHARTS -->
-        <div class="two-col">
-            <div class="card">
-                <span class="s-label">// 03 — Model Exposure</span>
-                <div class="s-title"><i class="fas fa-robot"></i>Model Vulnerability Rate</div>
-                <div class="chart-wrap"><canvas id="modelSuccessChart"></canvas></div>
-            </div>
-            <div class="card">
-                <span class="s-label">// 04 — Attack Vectors</span>
-                <div class="s-title"><i class="fas fa-crosshairs"></i>Attack Vector Success</div>
-                <div class="chart-wrap"><canvas id="attackSuccessChart"></canvas></div>
-            </div>
-        </div>
-
-        <!-- TABLE -->
         <div class="card">
-            <span class="s-label">// 05 — Exfiltration Log</span>
+            <span class="s-label">// 03 — Exfiltration Log</span>
             <div class="s-title"><i class="fas fa-biohazard"></i>Extracted Data — Successful Jailbreaks</div>
             <table class="data-table" id="harmfulPromptsTable">
                 <thead>
@@ -399,7 +371,6 @@ REPORT_TEMPLATE = '''
 
     </div>
 
-    <!-- FOOTER -->
     <div class="report-footer">
         <strong>FUZZYAI</strong> &nbsp;·&nbsp; Open-Source AI Security Framework
     </div>
@@ -417,7 +388,7 @@ REPORT_TEMPLATE = '''
 
         reportData.attackSuccessRate.forEach(attack => {{
             if (attack.value > 0) {{
-                if (mitigationsDict[attack.name]) {{
+                if (mitigationsDict && mitigationsDict[attack.name]) {{
                     mitigations.add(mitigationsDict[attack.name]);
                 }} else {{
                     mitigations.add('<span class="severity-high">[ATTENTION] ' + attack.name + ':</span> Vulnerability detected. <b>Mitigation:</b> Apply general LLM security best practices and review logs.');
@@ -445,36 +416,7 @@ REPORT_TEMPLATE = '''
 
         const gridColor = 'rgba(255,255,255,0.06)';
 
-        // ── 2. RADAR ──
-        const radarColors   = ['rgba(255,34,85,0.25)','rgba(0,212,255,0.25)','rgba(255,215,0,0.25)','rgba(0,255,136,0.25)'];
-        const radarBorders  = ['rgba(255,34,85,0.9)','rgba(0,212,255,0.9)','rgba(255,215,0,0.9)','rgba(0,255,136,0.9)'];
-
-        const radarDatasets = reportData.heatmap.models.map((model, index) => ({{
-            label: model,
-            data: reportData.heatmap.attacks.map((_, i) => reportData.heatmap.data[i][index] * 100),
-            backgroundColor: radarColors[index % radarColors.length],
-            borderColor:     radarBorders[index % radarBorders.length],
-            pointBackgroundColor: radarBorders[index % radarBorders.length],
-            pointRadius: 4,
-            fill: true
-        }}));
-
-        new Chart(document.getElementById('radarChart'), {{
-            type: 'radar',
-            data: {{ labels: reportData.heatmap.attacks, datasets: radarDatasets }},
-            options: {{
-                responsive: true, maintainAspectRatio: false,
-                scales: {{ r: {{
-                    angleLines: {{ color: gridColor }},
-                    grid:       {{ color: gridColor }},
-                    pointLabels: {{ color: '#c0cdd9', font: {{ size: 12, family: "'Orbitron', sans-serif" }} }},
-                    ticks: {{ backdropColor: 'transparent', color: '#5a6880', min: 0, max: 100 }}
-                }} }},
-                plugins: {{ legend: {{ labels: {{ color: '#c0cdd9', padding: 20 }} }} }}
-            }}
-        }});
-
-        // ── 3. BAR CHARTS ──
+        // ── 2. BAR CHART ──
         const barOpts = {{
             responsive: true, maintainAspectRatio: false,
             scales: {{
@@ -493,16 +435,7 @@ REPORT_TEMPLATE = '''
             options: barOpts
         }});
 
-        new Chart(document.getElementById('attackSuccessChart'), {{
-            type: 'bar',
-            data: {{
-                labels: reportData.attackSuccessRate.map(i => i.name),
-                datasets: [{{ data: reportData.attackSuccessRate.map(i => i.value), backgroundColor: 'rgba(0,212,255,0.6)', borderColor: 'rgba(0,212,255,1)', borderWidth: 1, borderRadius: 3 }}]
-            }},
-            options: barOpts
-        }});
-
-        // ── 4. TABLE ──
+        // ── 3. TABLE ──
         const tbody = document.querySelector('#harmfulPromptsTable tbody');
         reportData.harmfulPrompts.forEach(prompt => {{
             const row = document.createElement('tr');
