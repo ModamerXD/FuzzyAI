@@ -336,7 +336,8 @@ REPORT_TEMPLATE = '''
         <div class="header-meta">
             <strong>OPEN SOURCE</strong><br>
             AI Security Research<br>
-            Generated: <span id="gen-time"></span>
+            Generated: <span id="gen-time"></span><br>
+            Elapsed Time: <span id="elapsed-time" style="color: var(--green);"></span>
         </div>
     </div>
 
@@ -380,6 +381,11 @@ REPORT_TEMPLATE = '''
         document.getElementById('gen-time').textContent = new Date().toUTCString();
 
         const reportData = {report_data};
+
+        const totalSecs = reportData.totalTimeSeconds || 0;
+        const minutes = Math.floor(totalSecs / 60);
+        const seconds = (totalSecs % 60).toFixed(1);
+        document.getElementById('elapsed-time').textContent = minutes + 'm ' + seconds + 's';
 
         // ── 1. MITIGATIONS ──
         const mitigationsList = document.getElementById('mitigationsList');
@@ -549,6 +555,8 @@ def generate_report(report: FuzzerResult) -> None:
             "attackSuccessRate": attack_success_rate,
             "harmfulPrompts": harmful_prompts,
             "failedPrompts": failed_prompts,
+            "mitigationsDict": dynamic_mitigations,
+            "totalTimeSeconds": report.total_time_seconds,
             "heatmap": {
                 "data": heatmap_data,
                 "models": models,

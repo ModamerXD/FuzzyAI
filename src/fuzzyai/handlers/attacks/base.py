@@ -1,6 +1,11 @@
 import asyncio
 import logging
 import uuid
+import time
+import os
+import glob
+
+from fuzzyai.utils.utils import CURRENT_TIMESTAMP
 from contextlib import asynccontextmanager
 from enum import Enum
 from pathlib import Path
@@ -174,8 +179,15 @@ class BaseAttackTechniqueHandler(BaseAttackTechniqueHandlerProto, Generic[T]):
         results_file_path = Path(".out") / self._attack_id if self._attack_id else Path(".out") / self._attack_id
         results_file = await aiofiles.open(results_file_path, "a", encoding="utf-8")
         
+        list_of_dirs = glob.glob('results/*')
+        latest_dir = max(list_of_dirs, key=os.path.getctime) if list_of_dirs else ".out"
+        
+        times_file_path = Path(latest_dir) / f"{self._attack_id}_times.csv"
+        times_file = await aiofiles.open(times_file_path, "a", encoding="utf-8")
+        await times_file.write("Prompt,Time_Seconds,Is_Vulnerable\n")
+
         for i in range(self._max_workers):
-            pending_tasks.add(asyncio.create_task(self._consume_attack_params(results_file), name=f"{i}"))
+            pending_tasks.add(asyncio.create_task(self._consume_attack_params(results_file, times_file), name=f"{i}"))
 
         try:
             while True:
@@ -202,6 +214,7 @@ class BaseAttackTechniqueHandler(BaseAttackTechniqueHandlerProto, Generic[T]):
         finally:
             self._progress_bar.close()
             await results_file.close()
+            await times_file.close()
         
         return result
 
@@ -308,7 +321,7 @@ class BaseAttackTechniqueHandler(BaseAttackTechniqueHandlerProto, Generic[T]):
     Returns:
         Optional[list[AttackResultEntry]]: Attack results.
     """
-    async def _consume_attack_params(self, results_file: Any) -> Optional[list[AttackResultEntry]]:
+    async def _consume_attack_params(self, results_file: Any, times_file: Any) -> Optional[list[AttackResultEntry]]:
         results: list[AttackResultEntry] = []
         initial = True
         param: dict[str, Any] = {}
@@ -328,7 +341,20 @@ class BaseAttackTechniqueHandler(BaseAttackTechniqueHandlerProto, Generic[T]):
                     self._params_queue.task_done()
                     continue
 
+                start_time = time.time()
                 entry = await self._attack(**param)
+                elapsed_time = time.time() - start_time
+                safe_prompt = param['prompt'].replace('"', '""') 
+                
+                is_vulnerable = "False"
+                if entry and entry.classifications and 1 in entry.classifications.values():
+                    is_vulnerable = "True"
+                elif not entry:
+                    is_vulnerable = "Error_No_Response"
+                
+                await times_file.write(f'"{safe_prompt}",{elapsed_time:.2f},{is_vulnerable}\n')
+                await times_file.flush()
+
                 if entry:
                     # Make sure we haven't stored a result for this prompt already
                     if entry.original_prompt in self._completed_prompts:

@@ -23,7 +23,7 @@ from fuzzyai.handlers.db.adv_suffixes import AdversarialSuffixesHandler
 from fuzzyai.llm.providers.base import BaseLLMProvider
 from fuzzyai.llm.providers.enums import LLMProvider
 from fuzzyai.models.fuzzer_result import FuzzerResult
-from fuzzyai.utils.utils import llm_provider_factory
+from fuzzyai.utils.utils import llm_provider_factory, CURRENT_TIMESTAMP
 
 logger = logging.getLogger(__name__)
 
@@ -201,8 +201,7 @@ class Fuzzer:
         start_time = time.time()
 
         # Create the output directory early for progressive saving using local datetime
-        current_time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        output_dir = f"results/{current_time_str}"
+        output_dir = f"results/{CURRENT_TIMESTAMP}"
         await aiofiles.os.makedirs(output_dir, exist_ok=True)
         raw_file_path = f"{output_dir}/raw.jsonl"
 
@@ -241,7 +240,8 @@ class Fuzzer:
         if attack_handler is not None and self._cleanup:
             await asyncio.gather(attack_handler.close())
 
-        report = FuzzerResult.from_attack_summary(self._attack_id, raw_results)
+        elapsed_time = time.time() - start_time
+        report = FuzzerResult.from_attack_summary(self._attack_id, raw_results, total_time=elapsed_time)
         return report, raw_results
     
 

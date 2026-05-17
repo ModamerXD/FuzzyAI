@@ -53,9 +53,10 @@ class FuzzerResultEntry(BaseModel):
 class FuzzerResult(MongoDocument):
     attack_id: str = Field(default_factory=lambda: str(uuid4()))
     attacking_techniques: Optional[list[FuzzerResultEntry]] = []
+    total_time_seconds: float = 0.0
 
     @classmethod
-    def from_attack_summary(cls, attack_id: str, attack_summaries: list[AttackSummary]) -> 'FuzzerResult':
+    def from_attack_summary(cls, attack_id: str, attack_summaries: list[AttackSummary], total_time: float = 0.0) -> 'FuzzerResult':
         attacking_techniques: list[FuzzerResultEntry] = []
 
         for attack_summary in attack_summaries:
@@ -102,4 +103,6 @@ class FuzzerResult(MongoDocument):
                         models=models
                     )
                 )
-        return cls(attack_id=attack_id, attacking_techniques=attacking_techniques)
+        
+        # We explicitly inject total_time here so Pydantic maps it to the total_time_seconds attribute
+        return cls(attack_id=attack_id, attacking_techniques=attacking_techniques, total_time_seconds=total_time)

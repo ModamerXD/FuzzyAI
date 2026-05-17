@@ -2,6 +2,7 @@
 import os
 import subprocess
 import sys
+import shlex
 from pathlib import Path
 
 import streamlit as st
@@ -311,13 +312,38 @@ elif st.session_state.step == 5:
             st.rerun()
     
     if run_button:
+        import shlex
+        
         env = os.environ.copy()
-        env.update(st.session_state.env_vars)
+        
+        st.divider()
+        st.subheader("Terminal Output")
+        
+        output_placeholder = st.empty()
+        full_output = ""
+        
+        cmd_list = shlex.split(new_command)
+
         try:
-            idx = new_command.split(" ").index("-t")
-            all_args = new_command.split(" ")[:idx+1]
-            all_args.append(" ".join(new_command.split(" ")[idx+1:]))
-            result = subprocess.run(all_args, capture_output=True, text=True, env=env)
-            st.code(result.stdout + result.stderr)
+            with subprocess.Popen(
+                cmd_list,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1    
+            ) as process:
+                
+                for line in process.stdout:
+                    full_output += line
+                    output_placeholder.code(full_output, language="bash")
+            
+            process.wait()
+            
+            if process.returncode == 0:
+                st.success("Execution finished successfully!")
+            else:
+                st.error(f"Execution finished with errors (Return Code: {process.returncode})")
+                
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.error(f"Failed to run command: {e}")
