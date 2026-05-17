@@ -501,15 +501,10 @@ elif st.session_state.step == 5:
                     scrolling=False
                 )
 
-        # Run from the project root (parent of the webui script),
-        # matching the CWD you'd use in a normal terminal.
-        project_cwd = Path(__file__).parent.parent
-
         try:
             with subprocess.Popen(
                 new_command,
                 shell=True,
-                cwd=project_cwd,
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,

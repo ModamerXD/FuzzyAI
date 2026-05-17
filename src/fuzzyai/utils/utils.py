@@ -10,9 +10,7 @@ from fuzzyai.llm.providers.base import BaseLLMProvider, llm_provider_fm
 from fuzzyai.llm.providers.enums import LLMProvider
 from fuzzyai.models.fuzzer_result import FuzzerResult
 
-from datetime import datetime
-
-CURRENT_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
+CURRENT_TIMESTAMP = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 logger = logging.getLogger(__name__)
 
 def llm_provider_model_sanity(provider: str, model: str) -> None:
@@ -579,11 +577,22 @@ def generate_report(report: FuzzerResult) -> None:
         # Generate the HTML report using string formatting
         html_data = REPORT_TEMPLATE.format(report_data=json.dumps(report_data))
         
-        # Save the report — generate a fresh timestamp so the folder matches the run
-        import os
-        run_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        output_dir = f'results/{run_timestamp}'
-        os.makedirs(output_dir, exist_ok=True)
+        # Save the report — find the directory the CLI just created (it may have
+        # a slightly different timestamp than CURRENT_TIMESTAMP), then fall back
+        # to creating one ourselves if nothing recent exists.
+        import os, glob, time
+        results_dirs = sorted(
+            glob.glob('results/*/'),
+            key=os.path.getmtime,
+            reverse=True
+        )
+        # Use the most-recently modified dir if it was touched in the last 60 s
+        if results_dirs and (time.time() - os.path.getmtime(results_dirs[0])) < 60:
+            output_dir = results_dirs[0].rstrip('/')
+        else:
+            output_dir = f'results/{CURRENT_TIMESTAMP}'
+            os.makedirs(output_dir, exist_ok=True)
+
         output_path = f'{output_dir}/report.html'
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_data)
