@@ -10,7 +10,9 @@ from fuzzyai.llm.providers.base import BaseLLMProvider, llm_provider_fm
 from fuzzyai.llm.providers.enums import LLMProvider
 from fuzzyai.models.fuzzer_result import FuzzerResult
 
-CURRENT_TIMESTAMP = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+from datetime import datetime
+
+CURRENT_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 logger = logging.getLogger(__name__)
 
 def llm_provider_model_sanity(provider: str, model: str) -> None:
@@ -96,7 +98,16 @@ def print_report(report: FuzzerResult) -> None:
     try:
         print(tabulate(table_data, headers, tablefmt="simple_grid", maxcolwidths=[40, 20, 20, 40, 50, 10], colalign=("center", "center", "center", "center", "center", "center")))
     except Exception as e:
-        logger.error("Can't generating report")
+        logger.warning(f"simple_grid table failed ({e}), falling back to plain format")
+        try:
+            # Replace emoji with ASCII so tabulate doesn't trip on character widths
+            safe_data = [
+                [str(c).replace("✅", "[OK]").replace("❌", "[X]") for c in row]
+                for row in table_data
+            ]
+            print(tabulate(safe_data, headers, tablefmt="grid", maxcolwidths=[40, 20, 20, 40, 50, 10]))
+        except Exception as e2:
+            logger.error(f"Can't generate report table: {e2}")
 
 # Define the template with double curly braces for JavaScript/CSS and single for Python
 REPORT_TEMPLATE = '''
@@ -568,8 +579,12 @@ def generate_report(report: FuzzerResult) -> None:
         # Generate the HTML report using string formatting
         html_data = REPORT_TEMPLATE.format(report_data=json.dumps(report_data))
         
-        # Save the report
-        output_path = f'results/{CURRENT_TIMESTAMP}/report.html'
+        # Save the report — generate a fresh timestamp so the folder matches the run
+        import os
+        run_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        output_dir = f'results/{run_timestamp}'
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = f'{output_dir}/report.html'
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_data)
             

@@ -1,11 +1,14 @@
 # type: ignore
 import os
+import re
 import subprocess
 import sys
 import shlex
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
+import html as html_module
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -280,7 +283,7 @@ elif st.session_state.step == 5:
         command.extend(["-c", classifier])
 
     if st.session_state.classifier_model:
-        command.extend(["--classifier-model", st.session_state.classifier_model])
+        command.extend(["-cm", st.session_state.classifier_model])
 
     ep = {}
     if st.session_state.extra_params:
@@ -291,8 +294,16 @@ elif st.session_state.step == 5:
     for k, v in ep.items():
         command.extend(["-e", f"{k}={v}"])
 
-    command.extend(["-t", f"{st.session_state.prompt}"])
-
+    PAYLOADS_DIR = Path.cwd() / "payloads"
+    PAYLOADS_DIR.mkdir(exist_ok=True)
+    txt_files = [f.name for f in PAYLOADS_DIR.glob("*.txt")]
+    
+    selected_file = st.selectbox("Payload Selection:", ["Use Text Prompt"] + txt_files)
+    
+    if selected_file == "Use Text Prompt":
+        command.extend(["-t", f'"{st.session_state.prompt}"'])
+    else:
+        command.extend(["-T", f'"{PAYLOADS_DIR / selected_file}"'])
 
     st.code(" ".join(command))
     st.subheader("Edit before executing")
@@ -311,39 +322,214 @@ elif st.session_state.step == 5:
             st.session_state.step = 1
             st.rerun()
     
+    # ANSI color code -> HTML span mapping
+    ANSI_COLORS = {
+        "30": "#000", "31": "#ff5f56", "32": "#27c93f", "33": "#f5a623",
+        "34": "#5b9bd5", "35": "#c678dd", "36": "#56b6c2", "37": "#d4d4d4",
+        "90": "#555", "91": "#ff6e6e", "92": "#5af78e", "93": "#f4f99d",
+        "94": "#caa9fa", "95": "#ff92d0", "96": "#9aedfe", "97": "#ffffff",
+    }
+
+    def clean_output(text: str) -> str:
+        """Strip ANSI codes and decode literal unicode escapes."""
+        # Decode literal backslash-u escapes emitted by fuzzyai as Python strings
+        def decode_escape(m):
+            try:
+                return chr(int(m.group(1), 16))
+            except (ValueError, OverflowError):
+                return m.group(0)
+        text = re.sub(r'[\\][u]([0-9a-fA-F]{4})', decode_escape, text)
+        text = re.sub(r'[\\][U]([0-9a-fA-F]{8})', decode_escape, text)
+
+        # Convert ANSI color codes to HTML spans, strip the rest
+        def ansi_to_html(m):
+            codes = m.group(1).split(";")
+            spans = ""
+            for code in codes:
+                code = code.strip()
+                if code == "0" or code == "":
+                    spans += "</span>"
+                elif code in ANSI_COLORS:
+                    spans += f'<span style="color:{ANSI_COLORS[code]}">'
+            return spans if spans else ""
+
+        text = re.sub(r'\x1b\[([0-9;]*)m', ansi_to_html, text)
+        # Also handle bare bracket codes (no ESC prefix, e.g. fuzzyai output)
+        text = re.sub(r'(?<!\x1b)\[([0-9;]+)m', ansi_to_html, text)
+        # Strip any remaining ESC sequences
+        text = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', text)
+        return text
+
+    def render_terminal(output: str, status: str = "running"):
+        """Render output as a styled terminal with emoji support."""
+        cleaned = clean_output(output)
+        escaped = html_module.escape(cleaned).replace("\n", "<br>")
+        # Re-allow the color spans we injected before escaping — swap escaped tags back
+        escaped = re.sub(r'&lt;(/?)span(.*?)&gt;', lambda m: f'<{m.group(1)}span{html_module.unescape(m.group(2))}>', escaped)
+
+        if status == "running":
+            status_dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f5a623;margin-right:6px;animation:blink 1s infinite;"></span>'
+            status_label = '<span style="color:#f5a623;font-size:11px;">RUNNING</span>'
+        elif status == "success":
+            status_dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#27c93f;margin-right:6px;"></span>'
+            status_label = '<span style="color:#27c93f;font-size:11px;">DONE</span>'
+        else:
+            status_dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff5f56;margin-right:6px;"></span>'
+            status_label = '<span style="color:#ff5f56;font-size:11px;">ERROR</span>'
+
+        terminal_html = f"""
+        <style>
+            @keyframes blink {{
+                0%, 100% {{ opacity: 1; }}
+                50% {{ opacity: 0.2; }}
+            }}
+            @keyframes cursor-blink {{
+                0%, 100% {{ opacity: 1; }}
+                50% {{ opacity: 0; }}
+            }}
+            .terminal-wrap {{
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+                font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+                margin: 4px 0 12px 0;
+            }}
+            .terminal-titlebar {{
+                background: #2b2b2b;
+                padding: 10px 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                border-bottom: 1px solid #1a1a1a;
+            }}
+            .dot {{
+                width: 13px;
+                height: 13px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }}
+            .dot-red   {{ background: #ff5f56; box-shadow: 0 0 0 0.5px #e0443e; }}
+            .dot-yellow {{ background: #ffbd2e; box-shadow: 0 0 0 0.5px #dea123; }}
+            .dot-green {{ background: #27c93f; box-shadow: 0 0 0 0.5px #1aab29; }}
+            .terminal-title {{
+                flex: 1;
+                text-align: center;
+                color: #888;
+                font-size: 12px;
+                letter-spacing: 0.5px;
+                margin-left: -52px;
+            }}
+            .terminal-status {{
+                display: flex;
+                align-items: center;
+                margin-left: auto;
+            }}
+            .terminal-body {{
+                background: #0d0d0d;
+                padding: 16px 20px;
+                min-height: 200px;
+                max-height: 500px;
+                overflow-y: auto;
+                color: #d4d4d4;
+                font-size: 13px;
+                line-height: 1.7;
+                white-space: pre-wrap;
+                word-break: break-all;
+            }}
+            .terminal-body::-webkit-scrollbar {{
+                width: 6px;
+            }}
+            .terminal-body::-webkit-scrollbar-track {{
+                background: #1a1a1a;
+            }}
+            .terminal-body::-webkit-scrollbar-thumb {{
+                background: #444;
+                border-radius: 3px;
+            }}
+            .prompt-line {{
+                color: #27c93f;
+                margin-bottom: 6px;
+            }}
+            .cursor {{
+                display: inline-block;
+                width: 8px;
+                height: 14px;
+                background: #d4d4d4;
+                vertical-align: middle;
+                animation: cursor-blink 1s infinite;
+                margin-left: 2px;
+            }}
+        </style>
+        <div class="terminal-wrap">
+            <div class="terminal-titlebar">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+                <span class="terminal-title">fuzzyai — fuzz</span>
+                <div class="terminal-status">{status_dot}{status_label}</div>
+            </div>
+            <div class="terminal-body" id="terminal-body">
+                <div class="prompt-line">$ {html_module.escape(new_command)}</div>
+                <div>{escaped}{"<span class='cursor'></span>" if status == "running" else ""}</div>
+            </div>
+        </div>
+        <script>
+            // Auto-scroll to bottom
+            var tb = document.getElementById("terminal-body");
+            if (tb) tb.scrollTop = tb.scrollHeight;
+        </script>
+        """
+        return terminal_html
+
     if run_button:
-        import shlex
-        
         env = os.environ.copy()
-        
-        st.divider()
-        st.subheader("Terminal Output")
-        
-        output_placeholder = st.empty()
+        env.update(st.session_state.get("env_vars", {}))
+        # Force UTF-8 for the child process so Unicode/emoji in output doesn't
+        # crash when stdout is piped (Windows defaults to charmap/cp1252)
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"  # Python 3.7+ UTF-8 mode
+
+        st.subheader("Live Terminal")
+        terminal_slot = st.empty()
         full_output = ""
-        
-        cmd_list = shlex.split(new_command)
+
+        def show_terminal(output, status):
+            with terminal_slot.container():
+                components.html(
+                    render_terminal(output, status=status),
+                    height=560,
+                    scrolling=False
+                )
+
+        # Run from the project root (parent of the webui script),
+        # matching the CWD you'd use in a normal terminal.
+        project_cwd = Path(__file__).parent.parent
 
         try:
             with subprocess.Popen(
-                cmd_list,
+                new_command,
+                shell=True,
+                cwd=project_cwd,
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                bufsize=1    
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1
             ) as process:
-                
-                for line in process.stdout:
-                    full_output += line
-                    output_placeholder.code(full_output, language="bash")
-            
+                if process.stdout:
+                    for line in process.stdout:
+                        full_output += line
+                        show_terminal(full_output, status="running")
+
             process.wait()
-            
             if process.returncode == 0:
-                st.success("Execution finished successfully!")
+                show_terminal(full_output, status="success")
+                st.success("✅ Execution Complete!")
             else:
-                st.error(f"Execution finished with errors (Return Code: {process.returncode})")
-                
+                show_terminal(full_output, status="error")
+                st.error(f"❌ Process exited with code {process.returncode}")
+
         except Exception as e:
             st.error(f"Failed to run command: {e}")

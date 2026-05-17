@@ -38,7 +38,7 @@ class PromptExtractionAttackHandler(BaseAttackTechniqueHandler[BaseModel]):
 
                 response = await llm.generate(mutated_prompt, **self._extra)
                 
-                print(f"LLM Response for mutation {attempt + 1}:\n{response.response if response else 'No response'}\n")
+                logger.info(f"LLM Response for mutation {attempt + 1}:\n{response.response if response else 'No response'}\n")
 
                 # LLM-as-a-Judge
                 logger.info("Sending response to LLM Judge for evaluation...")
